@@ -269,11 +269,44 @@ async def test_check_sources_reports_failures(monkeypatch: pytest.MonkeyPatch) -
     assert "dns failure" in payload["results"][0]["error"]
 
 
-async def test_booking_link_includes_referral_disclosure(patched_upstream: None) -> None:
+async def test_booking_link_discloses_commission(patched_upstream: None) -> None:
     payload = await call("cruise_get_booking_link", {"cruise_line": "Carnival"})
     assert payload["tool_called"] == "getCruiseBookingInfo"
-    assert any("referral=135752" in u for u in payload["booking_urls"])
+    assert payload["booking_urls"]
     assert "commission" in payload["disclosure"]
+
+
+async def test_booking_disclosure_does_not_claim_a_referral_param() -> None:
+    """Live checking showed referral=135752 is resort-only, not cruise.
+
+    The disclosure must not tell users cruise links carry that parameter.
+    """
+    payload = await call("cruise_list_sources", {"include_disabled": False})
+    pixie = {s["id"]: s for s in payload["sources"]}["pixie"]
+    assert any("REFERRAL CLAIM IS WRONG FOR CRUISES" in c for c in pixie["corrections"])
+
+
+async def test_booking_only_source_excluded_from_voyage_search() -> None:
+    """Pixie returns booking entry points, so it must not be queried for voyages."""
+    payload = await call("cruise_search_voyages", {"sources": ["pixie"]})
+    assert payload["sources_queried"] == []
+    assert payload["count"] == 0
+    assert any("booking links" in c for c in payload["caveats"])
+
+
+async def test_voyage_search_defaults_exclude_non_voyage_sources() -> None:
+    payload = await call("cruise_search_voyages", {})
+    assert "pixie" not in payload["sources_queried"]
+    assert "viator" not in payload["sources_queried"]
+    assert "siloah" in payload["sources_queried"]
+
+
+async def test_capabilities_are_exposed_in_registry() -> None:
+    payload = await call("cruise_list_sources", {"include_disabled": True})
+    by_id = {s["id"]: s for s in payload["sources"]}
+    assert by_id["pixie"]["provides"] == ["booking"]
+    assert "voyages" in by_id["siloah"]["provides"]
+    assert by_id["viator"]["provides"] == ["excursions"]
 
 
 async def test_booking_link_error_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:

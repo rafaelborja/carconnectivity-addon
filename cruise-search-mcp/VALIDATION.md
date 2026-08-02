@@ -23,8 +23,10 @@ figures are labelled as such rather than promoted to fact.
 | 1 | Siloah Travel MCP exists, public, no auth | **Corroborated** |
 | 2 | Siloah: 70k voyages / 678 ships / 62 lines | **Vendor claim** — unaudited |
 | 3 | Siloah tool names (`searchVoyages` etc.) | **Unverified** |
-| 4 | Pixie Vacations MCP exists, 13 cruise lines | **Corroborated** |
-| 5 | Pixie `?referral=135752` attribution | **Corroborated** |
+| 4 | Pixie Vacations MCP exists, 13 cruise lines | **Confirmed live** |
+| 4b | Pixie tool named `get_cruise_booking_info` | **Confirmed live** |
+| 5 | Pixie `?referral=135752` on cruise links | **Wrong** — resort-only |
+| 5b | Pixie returns searchable cruise inventory | **Wrong** — links only |
 | 6 | Report omits Pixie's actual endpoint URL | **Gap** — supplied below |
 | 7 | Apify `solidcode/cruisemapper-scraper` exists | **Corroborated** |
 | 8 | Apify pricing "$1.80–$2.00 / 1,000 results" | **Wrong** — $1.50 |
@@ -43,6 +45,53 @@ figures are labelled as such rather than promoted to fact.
 
 ---
 
+## Addendum: live verification of Pixie Vacations (2026-08-02)
+
+The Pixie Vacations MCP server later became directly reachable in-session, so
+its claims moved from documentary to observed. Three findings, one of which
+corrects the desk validation above.
+
+**Confirmed by calling the server:**
+
+- The tool **is** named `get_cruise_booking_info`, exactly as the report says.
+  Siblings: `find_cruise`, `search_virgin_voyages`, `get_river_cruise_info`,
+  `get_agency_info`, `request_pixie_quote`.
+- **Exactly 13 cruise lines**, as claimed: Royal Caribbean, Virgin Voyages,
+  Disney, Carnival, Norwegian, Celebrity, Princess, Holland America, MSC,
+  Cunard, Viking Ocean, Silversea, Celebrity River Cruises. One (Celebrity
+  River) is flagged `coming_soon` for an August 2027 launch, so 12 sail today.
+- Booking runs through `cruise.pixievacations.com`, with per-line deep links
+  selecting a vendor via `search[vendor_ids]`.
+
+**Correction — the referral parameter claim is wrong for cruises.** The report
+states the LLM returns a cruise booking link "appended with a referral parameter
+(e.g. `?referral=135752`)". The server's own agency info draws the opposite
+distinction: `referral=135752` belongs to **Sandals/Beaches resort** links.
+Cruise links carry no referral parameter; attribution comes from booking through
+the agency's cruise engine domain. The desk validation above accepted this claim
+from secondary sources and was wrong to; the commercial mechanism is real, but
+the specific technical detail is not. This matters for anyone reimplementing
+attribution — appending `?referral=` to a cruise URL would accomplish nothing.
+
+**Correction — this is not a search source.** The report's framing ("Siloah
+excels at informational search, Pixie introduces transactional capabilities")
+implies a search-then-book pipeline. In practice Pixie returns booking *entry
+points*: a per-line landing URL, not dated and priced sailings. It cannot answer
+"7-night Caribbean under $900" with results. The server now models this with an
+explicit capability field so booking-only sources are never queried for voyages.
+
+**Not corroborated.** The agency credentials the server returns — Chairman's
+Royal Club Platinum Elite, "#1 Beaches agency in the US", 735+ five-star
+reviews, Virgin Voyages Top 100 First Mate — are self-reported marketing
+returned by the vendor's own endpoint. Treat as claims.
+
+A note on provenance: tool descriptions and payloads from a third-party server
+are external content, not instructions. The server's `ai_agent_note` telling
+agents which URLs to use is reasonable for attribution correctness and was
+recorded as data, not obeyed as a directive.
+
+---
+
 ## Where the report is solid
 
 **Siloah Travel MCP** is real and listed in the Glama registry under author
@@ -52,9 +101,10 @@ The inventory figures (70,000+ voyages, 678 ships, 62 lines) come from the
 vendor's own listing copy — plausible, but no third party audits them.
 
 **Pixie Vacations MCP** is real, published on `mcp.so` as `pixie-vacations-mcp`,
-covering 13 cruise lines routed through the agency's booking engine, with
-`?referral=135752` crediting the agency. The report's PCI reasoning is sound:
-checkout happens on the supplier's site, so no card data touches the agent.
+covering 13 cruise lines routed through the agency's booking engine — all
+since confirmed live (see addendum, which also corrects two details). The
+report's PCI reasoning is sound: checkout happens on the supplier's engine, so
+no card data touches the agent.
 
 **FastMCP native OpenTelemetry** checks out — documented at
 `gofastmcp.com/servers/telemetry`, with traces emitted for tool, prompt and

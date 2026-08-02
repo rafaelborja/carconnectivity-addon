@@ -24,6 +24,7 @@ from .providers import ApifyProvider, McpSourceProvider, ProviderError
 from .sources import (
     SOURCES,
     SOURCES_BY_ID,
+    Capability,
     Source,
     SourceKind,
     SourceStatus,
@@ -168,12 +169,25 @@ def _describe_error(source_id: str, exc: BaseException) -> dict[str, Any]:
     return {"source": source_id, "ok": False, "error": message}
 
 
-def _resolve_targets(requested: Optional[list[str]]) -> list[Source]:
-    """Resolve requested source ids to callable MCP sources."""
+def _resolve_targets(
+    requested: Optional[list[str]], provides: Optional[Capability] = None
+) -> list[Source]:
+    """Resolve requested source ids to callable MCP sources.
+
+    When ``provides`` is given, sources lacking that capability are dropped even
+    if explicitly requested - asking a booking-only source for voyages yields
+    nothing useful.
+    """
     if requested is None:
-        return usable_sources(SourceKind.MCP)
+        return usable_sources(SourceKind.MCP, provides)
     resolved = [SOURCES_BY_ID[s] for s in requested]
-    return [s for s in resolved if s.kind is SourceKind.MCP and s.endpoint]
+    return [
+        s
+        for s in resolved
+        if s.kind is SourceKind.MCP
+        and s.endpoint
+        and (provides is None or provides in s.provides)
+    ]
 
 
 @mcp.tool(
@@ -381,7 +395,7 @@ async def cruise_search_voyages(params: SearchVoyagesInput) -> str:
         - Per-source failures appear in "source_errors"; the call still succeeds.
         - If every source fails, "voyages" is empty and each error is listed.
     """
-    targets = _resolve_targets(params.sources)
+    targets = _resolve_targets(params.sources, Capability.VOYAGES)
     if not targets:
         return _json(
             {
@@ -389,7 +403,11 @@ async def cruise_search_voyages(params: SearchVoyagesInput) -> str:
                 "sources_queried": [],
                 "source_errors": [],
                 "voyages": [],
-                "caveats": ["No callable MCP sources are configured."],
+                "caveats": [
+                    "No source providing voyage search is available. Sources that "
+                    "only return booking links (e.g. pixie) cannot answer this; "
+                    "call cruise_list_sources to see each source's capabilities."
+                ],
             }
         )
 
@@ -469,10 +487,16 @@ async def cruise_search_voyages(params: SearchVoyagesInput) -> str:
 async def cruise_get_booking_link(params: BookingLinkInput) -> str:
     """Resolve a booking URL for a cruise line via the Pixie Vacations MCP source.
 
-    Returns a link only. It does not book anything, take payment, or hold
-    inventory: the user completes checkout on the supplier's own site. The URL
-    carries the agency's referral parameter, which credits that agency as agent
-    of record - disclose this when presenting the link.
+    Returns booking entry points only - it does not return dated, priced
+    sailings, and it does not book anything, take payment or hold inventory.
+    Use cruise_search_voyages to find a sailing first.
+
+    Links route through the agency's own cruise booking engine, which credits it
+    as agent of record and earns it a commission from the cruise line. Supplier
+    pricing is unchanged. Disclose the attribution when presenting the link.
+
+    Note: cruise links carry NO referral query parameter - that parameter belongs
+    to this agency's resort links. Attribution here comes from the engine domain.
 
     Args:
         params (BookingLinkInput): Validated input containing:
@@ -540,9 +564,11 @@ async def cruise_get_booking_link(params: BookingLinkInput) -> str:
             "results": records,
             "booking_urls": urls,
             "disclosure": (
-                "Links are attributed to Pixie Vacations via a referral parameter; "
-                "the agency earns a commission. Supplier pricing is unchanged. "
-                "Tell the user this before they click."
+                "Booking routes through Pixie Vacations' cruise engine, crediting "
+                "the agency as agent of record and earning it a commission from "
+                "the cruise line. Supplier pricing is unchanged and no booking fee "
+                "is added. Tell the user this before they click. These cruise links "
+                "carry no referral parameter - attribution is via the engine domain."
             ),
         }
     )

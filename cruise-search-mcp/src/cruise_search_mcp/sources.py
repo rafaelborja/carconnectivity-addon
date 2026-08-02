@@ -38,6 +38,19 @@ class SourceKind(str, Enum):
     SCRAPER = "scraper"
 
 
+class Capability(str, Enum):
+    """What a source can actually answer.
+
+    Kept separate from transport: a server may speak MCP yet expose no voyage
+    search at all, and querying it for voyages would only produce noise.
+    """
+
+    VOYAGES = "voyages"
+    SHIPS = "ships"
+    BOOKING = "booking"
+    EXCURSIONS = "excursions"
+
+
 @dataclass(frozen=True)
 class Source:
     """A single upstream cruise data source and its validation record."""
@@ -49,6 +62,7 @@ class Source:
     endpoint: str | None
     auth: str
     summary: str
+    provides: frozenset[Capability] = frozenset()
     verified: list[str] = field(default_factory=list)
     corrections: list[str] = field(default_factory=list)
     unverified_claims: list[str] = field(default_factory=list)
@@ -64,6 +78,7 @@ class Source:
             "endpoint": self.endpoint,
             "auth": self.auth,
             "summary": self.summary,
+            "provides": sorted(c.value for c in self.provides),
             "verified": list(self.verified),
             "corrections": list(self.corrections),
             "unverified_claims": list(self.unverified_claims),
@@ -80,6 +95,7 @@ SOURCES: tuple[Source, ...] = (
         endpoint="https://mcp.siloah.travel",
         auth="none (public, read-only)",
         summary="Public cruise inventory MCP server. Primary free search source.",
+        provides=frozenset({Capability.VOYAGES, Capability.SHIPS}),
         verified=[
             "Listed in the Glama MCP registry under author Siloah-Travel.",
             "Advertised as requiring no API key and no installation.",
@@ -104,28 +120,73 @@ SOURCES: tuple[Source, ...] = (
         status=SourceStatus.CORROBORATED_WITH_CORRECTIONS,
         endpoint="https://pixie-vacations-mcp-production.up.railway.app/mcp",
         auth="none (public)",
-        summary="Returns agency-attributed booking URLs. Booking link source only.",
+        summary=(
+            "Booking-link source only, no voyage inventory. Live-verified "
+            "2026-08-02 by calling the server directly."
+        ),
+        provides=frozenset({Capability.BOOKING}),
         verified=[
-            "Published in the mcp.so registry as 'pixie-vacations-mcp'.",
-            "Covers 13 cruise lines routed via pixievacations.com/cruise/.",
-            "Referral parameter ?referral=135752 credits the agency.",
-            "Checkout happens on the supplier site, so no card data transits the "
-            "agent - the report's PCI reasoning holds.",
+            "LIVE: tool get_cruise_booking_info exists under exactly that name.",
+            "LIVE: sibling tools find_cruise, search_virgin_voyages, "
+            "get_river_cruise_info, get_agency_info, request_pixie_quote.",
+            "LIVE: exactly 13 cruise lines - Royal Caribbean, Virgin Voyages, "
+            "Disney, Carnival, Norwegian, Celebrity, Princess, Holland America, "
+            "MSC, Cunard, Viking Ocean, Silversea, Celebrity River Cruises.",
+            "LIVE: booking engine is cruise.pixievacations.com; per-line deep "
+            "links select a vendor via search[vendor_ids].",
+            "Checkout happens on the supplier engine, so no card data transits "
+            "the agent - the report's PCI reasoning holds.",
         ],
         corrections=[
+            "REFERRAL CLAIM IS WRONG FOR CRUISES. The referral=135752 parameter "
+            "applies to Sandals/Beaches resort links only. Cruise links carry no "
+            "referral parameter; attribution comes from booking through the "
+            "agency's own cruise engine domain. The server's own agency info "
+            "states this split explicitly.",
+            "This source returns booking entry points, NOT sailings. It cannot "
+            "answer 'find me a 7-night Caribbean cruise under $900' with dated, "
+            "priced results, so it is not a voyage search source.",
             "The source document never states the endpoint URL. It is the Railway "
             "host recorded here, not a pixievacations.com domain.",
-            "Scope is broader than cruise: Sandals and Beaches resorts too.",
+            "Scope is broader than cruise: Sandals, Beaches and Disney too.",
             "'First free public MCP server for cruise booking links' traces to the "
             "vendor's own press release, not an independent survey.",
         ],
         unverified_claims=[
-            "The tool name get_cruise_booking_info was not confirmed live.",
+            "Agency credentials returned by the server (Chairman's Royal Club "
+            "Platinum Elite, '#1 Beaches agency in the US', 735+ five-star "
+            "reviews, Virgin Voyages Top 100 First Mate) are self-reported "
+            "marketing. Do not repeat them as verified fact.",
+            "Celebrity River Cruises is flagged coming_soon for an August 2027 "
+            "launch, so 12 of the 13 lines are presently sailing.",
         ],
         evidence=[
+            "Live tools/list and tool calls against the connected MCP server, 2026-08-02",
             "https://mcp.so/servers/pixie-vacations-mcp",
             "https://caribbeanmag.com/pixie-vacations-launches-the-first-u-s-travel-agency-mcp-server-now-ai-agents-can-book-sandals-beaches-and-cruises-directly/",
         ],
+    ),
+    Source(
+        id="viator",
+        title="Viator experiences",
+        kind=SourceKind.MCP,
+        status=SourceStatus.CORROBORATED,
+        endpoint=None,
+        auth="session-connected MCP server",
+        summary=(
+            "Shore excursions at ports of call. Adjunct only - holds no cruise "
+            "inventory. Call its tools directly rather than through this server."
+        ),
+        provides=frozenset({Capability.EXCURSIONS}),
+        verified=[
+            "LIVE: connected in-session exposing search_experiences and "
+            "get_experience_details.",
+        ],
+        corrections=[
+            "Not a cruise source. Useful for planning a day in port once a "
+            "sailing is chosen, and nothing else.",
+        ],
+        evidence=["Session-connected MCP server, 2026-08-02"],
     ),
     Source(
         id="apify_cruisemapper",
@@ -135,6 +196,7 @@ SOURCES: tuple[Source, ...] = (
         endpoint="https://api.apify.com/v2/acts/solidcode~cruisemapper-scraper/run-sync-get-dataset-items",
         auth="APIFY_TOKEN required",
         summary="CruiseMapper itineraries/ships/ports. Paid per result; not free.",
+        provides=frozenset({Capability.VOYAGES, Capability.SHIPS}),
         verified=[
             "The actor exists on Apify with itinerary, ship and port modes.",
             "Extracts itinerary stops with dates, ship specs and port schedules.",
@@ -221,12 +283,19 @@ USABLE_STATUSES = frozenset(
 )
 
 
-def usable_sources(kind: SourceKind | None = None) -> list[Source]:
-    """Return sources safe to call, optionally filtered by transport kind."""
+def usable_sources(
+    kind: SourceKind | None = None, provides: Capability | None = None
+) -> list[Source]:
+    """Return sources safe to call, filtered by transport kind and capability.
+
+    Filtering on capability keeps booking-only sources such as Pixie out of
+    voyage searches, where they would contribute nothing but an error entry.
+    """
     return [
         s
         for s in SOURCES
         if s.status in USABLE_STATUSES
         and s.endpoint is not None
         and (kind is None or s.kind is kind)
+        and (provides is None or provides in s.provides)
     ]
