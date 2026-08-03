@@ -15,6 +15,12 @@ configuration:
       spin:
         name: "Code PIN"
         description: "Entrez le code PIN à 4 chiffres utilisé pour l'accès à distance pour la 1ère voiture."
+      country:
+        name: "Région myVW (Volkswagen NA uniquement)"
+        description: "Utilisé uniquement par le connecteur « volkswagen_na ». « auto » déduit la région du pays configuré dans Home Assistant ; choisissez « ca » si vous avez un compte myVW canadien et que la détection automatique se trompe."
+      set_spin:
+        name: "Enregistrer le code PIN (Volkswagen NA uniquement)"
+        description: "Utilisé uniquement par le connecteur « volkswagen_na ». Si le service S-PIN de myVW refuse le code PIN (403/404), le connecteur enregistre le code PIN ci-dessus sur votre compte. À laisser désactivé sauf si les commandes à distance échouent."
       interval:
         name: "Intervalle de rafraîchissement"
         description: "Intervalle en secondes. Attention aux quotas API : une fois dépassé, l'API est bloquée temporairement."
@@ -35,6 +41,12 @@ configuration:
       spin:
         name: "Code PIN"
         description: "Entrez le code PIN à 4 chiffres pour la 2ème voiture."
+      country:
+        name: "Région myVW (Volkswagen NA uniquement)"
+        description: "Utilisé uniquement par le connecteur « volkswagen_na ». « auto » déduit la région du pays configuré dans Home Assistant ; choisissez « ca » si vous avez un compte myVW canadien et que la détection automatique se trompe."
+      set_spin:
+        name: "Enregistrer le code PIN (Volkswagen NA uniquement)"
+        description: "Utilisé uniquement par le connecteur « volkswagen_na ». Si le service S-PIN de myVW refuse le code PIN (403/404), le connecteur enregistre le code PIN ci-dessus sur votre compte. À laisser désactivé sauf si les commandes à distance échouent."
       interval:
         name: "Intervalle de rafraîchissement"
         description: "Intervalle en secondes. Attention aux quotas API."

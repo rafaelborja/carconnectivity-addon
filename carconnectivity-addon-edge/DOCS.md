@@ -54,7 +54,7 @@ Choose the manufacturer corresponding to your vehicle from the supported brands:
 - `Tronity`
 - `Volvo`
 - `Audi`
-- `Volkswagen North America` *(country automatically set from your Home Assistant country setting — `us` by default, `ca` if your HA is configured for Canada)*
+- `Volkswagen North America` *(the `myVW region` option defaults to `auto`, which follows your Home Assistant country setting — `us` unless your HA is configured for Canada)*
 
 If you own multiple vehicles from different brands, you can configure multiple sections.
 
@@ -69,6 +69,10 @@ For `Seat`, `Cupra`, `Skoda`, `Volkswagen`, `Volkswagen_na` and `Tronity`:
 - `PIN Code`: A 4-digit code required for remote access to certain vehicle features.
 - `Refresh Interval`: Defines how often (in seconds) the vehicle's data is updated.
 - `Warning:` Setting a refresh rate too frequently may exceed the API request limits imposed by the manufacturer, resulting in temporary access restrictions.
+
+Only for `Volkswagen_na` (both options are ignored by every other brand):
+- `myVW region`: `auto` (default), `us` or `ca`. `auto` uses the country configured in Home Assistant. Set it to `ca` explicitly if you have a Canadian myVW account but your Home Assistant country is not Canada — with the wrong region the connector talks to the wrong backend and every vehicle endpoint answers `403`.
+- `Register the PIN code`: disabled by default. When the myVW S-PIN service rejects the PIN code (`SPIN challenge endpoint forbidden` / `not found` in the log), enabling this makes the connector register the `PIN Code` above on your myVW account before retrying. Only enable it if remote data or commands fail: it writes the S-PIN to your account, so make sure the PIN you entered is the one you want.
 
 ⚠️ You can use 2 accounts for 2 different brands or 2 cars of a same brand that are not linked to the same account.
 

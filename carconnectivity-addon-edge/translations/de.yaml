@@ -15,6 +15,12 @@ configuration:
       spin:
         name: "PIN-Code"
         description: "Geben Sie den 4-stelligen PIN-Code ein, der für den Fernzugriff auf das erste Auto verwendet wird."
+      country:
+        name: "myVW-Region (nur Volkswagen NA)"
+        description: "Wird nur vom Connector „volkswagen_na“ verwendet. „auto“ leitet die Region aus dem in Home Assistant eingestellten Land ab; wählen Sie „ca“, wenn Sie ein kanadisches myVW-Konto haben und die automatische Erkennung falsch liegt."
+      set_spin:
+        name: "PIN-Code registrieren (nur Volkswagen NA)"
+        description: "Wird nur vom Connector „volkswagen_na“ verwendet. Wenn der myVW-S-PIN-Dienst den PIN-Code mit 403/404 ablehnt, registriert der Connector den oben angegebenen PIN-Code in Ihrem Konto. Nur aktivieren, wenn Fernbefehle fehlschlagen."
       interval:
         name: "Aktualisierungsintervall"
         description: "Intervall in Sekunden. Beachten Sie die API-Kontingente: Sobald das Kontingent überschritten ist, ist die API vorübergehend blockiert."
@@ -35,6 +41,12 @@ configuration:
       spin:
         name: "PIN-Code"
         description: "Geben Sie den 4-stelligen PIN-Code für das zweite Auto ein."
+      country:
+        name: "myVW-Region (nur Volkswagen NA)"
+        description: "Wird nur vom Connector „volkswagen_na“ verwendet. „auto“ leitet die Region aus dem in Home Assistant eingestellten Land ab; wählen Sie „ca“, wenn Sie ein kanadisches myVW-Konto haben und die automatische Erkennung falsch liegt."
+      set_spin:
+        name: "PIN-Code registrieren (nur Volkswagen NA)"
+        description: "Wird nur vom Connector „volkswagen_na“ verwendet. Wenn der myVW-S-PIN-Dienst den PIN-Code mit 403/404 ablehnt, registriert der Connector den oben angegebenen PIN-Code in Ihrem Konto. Nur aktivieren, wenn Fernbefehle fehlschlagen."
       interval:
         name: "Aktualisierungsintervall"
         description: "Intervall in Sekunden. Beachten Sie die API-Kontingente."

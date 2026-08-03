@@ -15,6 +15,12 @@ configuration:
       spin:
         name: "PIN-kode"
         description: "Skriv inn 4-sifret PIN-kode som brukes for fjernadgang til den første bilen."
+      country:
+        name: "myVW-region (kun Volkswagen NA)"
+        description: "Brukes bare av koblingen «volkswagen_na». «auto» utleder regionen fra landet som er satt i Home Assistant; velg «ca» hvis du har en kanadisk myVW-konto og automatisk gjenkjenning tar feil."
+      set_spin:
+        name: "Registrer PIN-koden (kun Volkswagen NA)"
+        description: "Brukes bare av koblingen «volkswagen_na». Hvis S-PIN-tjenesten til myVW avviser PIN-koden med 403/404, registrerer koblingen PIN-koden over på kontoen din. La den være av med mindre fjernkommandoer feiler."
       interval:
         name: "Oppdateringsintervall"
         description: "Intervall i sekunder. Merk API-kvoter: når kvoten er overskredet, blir API-en midlertidig blokkert."
@@ -35,6 +41,12 @@ configuration:
       spin:
         name: "PIN-kode"
         description: "Skriv inn 4-sifret PIN-kode for den andre bilen."
+      country:
+        name: "myVW-region (kun Volkswagen NA)"
+        description: "Brukes bare av koblingen «volkswagen_na». «auto» utleder regionen fra landet som er satt i Home Assistant; velg «ca» hvis du har en kanadisk myVW-konto og automatisk gjenkjenning tar feil."
+      set_spin:
+        name: "Registrer PIN-koden (kun Volkswagen NA)"
+        description: "Brukes bare av koblingen «volkswagen_na». Hvis S-PIN-tjenesten til myVW avviser PIN-koden med 403/404, registrerer koblingen PIN-koden over på kontoen din. La den være av med mindre fjernkommandoer feiler."
       interval:
         name: "Oppdateringsintervall"
         description: "Intervall i sekunder. Merk API-kvoter."

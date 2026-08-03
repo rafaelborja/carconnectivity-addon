@@ -10,7 +10,8 @@
                     "brand": "{{ .brand1.type }}",
                     {{- end }}
                     {{- if eq .brand1.type "volkswagen_na" }}
-                    "country": "us",
+                    "country": "{{ if and .brand1.country (ne .brand1.country "auto") }}{{ .brand1.country }}{{ else }}auto{{ end }}",
+                    "set_spin": {{ if .brand1.set_spin }}true{{ else }}false{{ end }},
                     {{- end }}
                     "username": "{{ .brand1.username }}",
                     "password": "{{ .brand1.password }}",
@@ -30,7 +31,8 @@
                     "brand": "{{ .brand2.type }}",
                     {{- end }}
                     {{- if eq .brand2.type "volkswagen_na" }}
-                    "country": "us",
+                    "country": "{{ if and .brand2.country (ne .brand2.country "auto") }}{{ .brand2.country }}{{ else }}auto{{ end }}",
+                    "set_spin": {{ if .brand2.set_spin }}true{{ else }}false{{ end }},
                     {{- end }}
                     "username": "{{ .brand2.username }}",
                     "password": "{{ .brand2.password }}",

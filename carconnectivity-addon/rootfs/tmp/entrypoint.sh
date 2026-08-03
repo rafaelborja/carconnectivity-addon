@@ -184,9 +184,14 @@ else
     color_echo "${BLUE}" "🛠️ Generating configuration..."
     tempio -conf "${OPTIONS_JSON}" -template carconnectivity.json.gtpl -out "${UI_NAME}"
     sed -i "s/\"locale\": \"en_US\"/\"locale\": \"$LOCALE\"/" "$UI_NAME"
+    # Volkswagen NA: "auto" means "derive the country from the Home Assistant locale".
+    # An explicit us/ca chosen in the add-on options is left untouched.
     if [ "${HA_COUNTRY}" = "CA" ]; then
-        sed -i "s/\"country\": \"us\"/\"country\": \"ca\"/" "$UI_NAME"
+        VWNA_COUNTRY="ca"
+    else
+        VWNA_COUNTRY="us"
     fi
+    sed -i "s/\"country\": \"auto\"/\"country\": \"${VWNA_COUNTRY}\"/" "$UI_NAME"
     if validate_json "${UI_NAME}"; then
         jq . "${UI_NAME}" > "${CONFIG_FILE}"
     else

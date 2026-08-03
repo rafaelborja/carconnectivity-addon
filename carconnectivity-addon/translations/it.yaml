@@ -15,6 +15,12 @@ configuration:
       spin:
         name: "Codice PIN"
         description: "Inserisci il codice PIN a 4 cifre utilizzato per l'accesso remoto alla prima auto."
+      country:
+        name: "Regione myVW (solo Volkswagen NA)"
+        description: "Usato solo dal connettore «volkswagen_na». «auto» ricava la regione dal paese configurato in Home Assistant; scegli «ca» se hai un account myVW canadese e il rilevamento automatico sbaglia."
+      set_spin:
+        name: "Registra il codice PIN (solo Volkswagen NA)"
+        description: "Usato solo dal connettore «volkswagen_na». Se il servizio S-PIN di myVW rifiuta il codice PIN con 403/404, il connettore registra il codice PIN indicato sopra sul tuo account. Lascialo disattivato a meno che i comandi remoti non falliscano."
       interval:
         name: "Intervallo di aggiornamento"
         description: "Intervallo in secondi. Attenzione alle quote API: una volta superate, l'API viene temporaneamente bloccata."
@@ -35,6 +41,12 @@ configuration:
       spin:
         name: "Codice PIN"
         description: "Inserisci il codice PIN a 4 cifre per la seconda auto."
+      country:
+        name: "Regione myVW (solo Volkswagen NA)"
+        description: "Usato solo dal connettore «volkswagen_na». «auto» ricava la regione dal paese configurato in Home Assistant; scegli «ca» se hai un account myVW canadese e il rilevamento automatico sbaglia."
+      set_spin:
+        name: "Registra il codice PIN (solo Volkswagen NA)"
+        description: "Usato solo dal connettore «volkswagen_na». Se il servizio S-PIN di myVW rifiuta il codice PIN con 403/404, il connettore registra il codice PIN indicato sopra sul tuo account. Lascialo disattivato a meno che i comandi remoti non falliscano."
       interval:
         name: "Intervallo di aggiornamento"
         description: "Intervallo in secondi. Attenzione alle quote API."

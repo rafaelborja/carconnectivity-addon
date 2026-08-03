@@ -15,6 +15,12 @@ configuration:
       spin:
         name: "Pincode"
         description: "Voer de 4-cijferige pincode in die wordt gebruikt voor externe toegang tot de 1e auto."
+      country:
+        name: "myVW-regio (alleen Volkswagen NA)"
+        description: "Wordt alleen gebruikt door de connector 'volkswagen_na'. 'auto' leidt de regio af uit het in Home Assistant ingestelde land; kies 'ca' als je een Canadees myVW-account hebt en de automatische detectie het verkeerd heeft."
+      set_spin:
+        name: "Pincode registreren (alleen Volkswagen NA)"
+        description: "Wordt alleen gebruikt door de connector 'volkswagen_na'. Als de S-PIN-dienst van myVW de pincode weigert met 403/404, registreert de connector de bovenstaande pincode op je account. Laat uitgeschakeld tenzij externe opdrachten mislukken."
       interval:
         name: "Verversingsinterval"
         description: "Interval in seconden. Let op API-quota's: eenmaal overschreden, wordt de API tijdelijk geblokkeerd."
@@ -35,6 +41,12 @@ configuration:
       spin:
         name: "Pincode"
         description: "Voer de 4-cijferige pincode in voor de 2e auto."
+      country:
+        name: "myVW-regio (alleen Volkswagen NA)"
+        description: "Wordt alleen gebruikt door de connector 'volkswagen_na'. 'auto' leidt de regio af uit het in Home Assistant ingestelde land; kies 'ca' als je een Canadees myVW-account hebt en de automatische detectie het verkeerd heeft."
+      set_spin:
+        name: "Pincode registreren (alleen Volkswagen NA)"
+        description: "Wordt alleen gebruikt door de connector 'volkswagen_na'. Als de S-PIN-dienst van myVW de pincode weigert met 403/404, registreert de connector de bovenstaande pincode op je account. Laat uitgeschakeld tenzij externe opdrachten mislukken."
       interval:
         name: "Verversingsinterval"
         description: "Interval in seconden. Let op API-quota's."
