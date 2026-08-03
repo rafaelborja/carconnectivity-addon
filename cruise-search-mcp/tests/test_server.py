@@ -14,7 +14,26 @@ from fastmcp import Client, FastMCP
 
 from cruise_search_mcp import normalize, providers, server
 from cruise_search_mcp.providers import ProviderError, extract_records, select_tool
-from cruise_search_mcp.sources import SOURCES_BY_ID, SourceStatus
+from cruise_search_mcp.sources import (
+    SOURCES_BY_ID,
+    Capability,
+    Source,
+    SourceKind,
+    SourceStatus,
+)
+
+#: A stand-in voyage source. Tests must not depend on which real sources happen
+#: to be enabled, or downgrading one (as happened to Siloah) breaks the suite.
+FAKE_MCP_SOURCE = Source(
+    id="fake_mcp",
+    title="Fake MCP voyage source",
+    kind=SourceKind.MCP,
+    status=SourceStatus.CORROBORATED,
+    endpoint="https://fake.invalid/mcp",
+    auth="none",
+    summary="test fixture",
+    provides=frozenset({Capability.VOYAGES, Capability.SHIPS}),
+)
 
 
 # --------------------------------------------------------------------------
@@ -75,7 +94,21 @@ def build_fake_upstream() -> FastMCP:
 
 
 @pytest.fixture
-def patched_upstream(monkeypatch: pytest.MonkeyPatch) -> None:
+def fake_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Expose exactly one MCP voyage source, independent of the real registry."""
+
+    def _usable(
+        kind: SourceKind | None = None, provides: Capability | None = None
+    ) -> list[Source]:
+        if provides in (None, Capability.VOYAGES, Capability.SHIPS):
+            return [FAKE_MCP_SOURCE]
+        return []
+
+    monkeypatch.setattr(server, "usable_sources", _usable)
+
+
+@pytest.fixture
+def patched_upstream(monkeypatch: pytest.MonkeyPatch, fake_registry: None) -> None:
     """Point every McpSourceProvider at the in-memory fake upstream."""
     upstream = build_fake_upstream()
     monkeypatch.setattr(
@@ -227,7 +260,7 @@ async def test_search_returns_normalized_merged_results(patched_upstream: None) 
     first = payload["voyages"][0]
     assert first["cruise_line"] == "Royal Caribbean"
     assert first["price"] == 1299.0
-    assert first["source"] in {"siloah", "pixie"}
+    assert first["source"] == FAKE_MCP_SOURCE.id
     # Priced voyage sorts ahead of the unpriced one.
     assert payload["voyages"][1]["price"] is None
 
@@ -298,15 +331,41 @@ async def test_voyage_search_defaults_exclude_non_voyage_sources() -> None:
     payload = await call("cruise_search_voyages", {})
     assert "pixie" not in payload["sources_queried"]
     assert "viator" not in payload["sources_queried"]
-    assert "siloah" in payload["sources_queried"]
+    # Apify is the only remaining voyage source after Siloah was disabled.
+    assert "apify_cruisemapper" in payload["sources_queried"]
 
 
 async def test_capabilities_are_exposed_in_registry() -> None:
     payload = await call("cruise_list_sources", {"include_disabled": True})
     by_id = {s["id"]: s for s in payload["sources"]}
     assert by_id["pixie"]["provides"] == ["booking"]
-    assert "voyages" in by_id["siloah"]["provides"]
+    assert "voyages" in by_id["apify_cruisemapper"]["provides"]
     assert by_id["viator"]["provides"] == ["excursions"]
+
+
+async def test_siloah_is_disabled_after_failed_probe() -> None:
+    """Siloah is edge-blocked by a Cloudflare challenge no MCP client can pass."""
+    payload = await call("cruise_list_sources", {"include_disabled": True})
+    siloah = {s["id"]: s for s in payload["sources"]}["siloah"]
+    assert siloah["status"] == SourceStatus.UNVERIFIED.value
+    assert siloah["endpoint"] is None
+    assert siloah["provides"] == []
+    assert any("CLOUDFLARE MANAGED CHALLENGE" in c for c in siloah["corrections"])
+
+
+async def test_siloah_is_rejected_if_requested() -> None:
+    with pytest.raises(Exception, match="unverified"):
+        await call("cruise_search_voyages", {"sources": ["siloah"]})
+
+
+async def test_apify_without_token_degrades_not_crashes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The only voyage source needs a token; absence must be a clear error."""
+    monkeypatch.delenv("APIFY_TOKEN", raising=False)
+    payload = await call("cruise_search_voyages", {"destination": "Alaska"})
+    assert payload["voyages"] == []
+    assert any("APIFY_TOKEN" in e["error"] for e in payload["source_errors"])
 
 
 async def test_booking_link_error_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:

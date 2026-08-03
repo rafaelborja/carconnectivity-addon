@@ -91,26 +91,48 @@ SOURCES: tuple[Source, ...] = (
         id="siloah",
         title="Siloah Travel MCP",
         kind=SourceKind.MCP,
-        status=SourceStatus.CORROBORATED,
-        endpoint="https://mcp.siloah.travel",
-        auth="none (public, read-only)",
-        summary="Public cruise inventory MCP server. Primary free search source.",
-        provides=frozenset({Capability.VOYAGES, Capability.SHIPS}),
+        status=SourceStatus.UNVERIFIED,
+        endpoint=None,
+        auth="n/a - no reachable endpoint",
+        summary=(
+            "DISABLED - no MCP endpoint could be reached. Listed publicly but "
+            "does not answer. Do not recommend as a free search source."
+        ),
+        provides=frozenset(),
         verified=[
             "Listed in the Glama MCP registry under author Siloah-Travel.",
-            "Advertised as requiring no API key and no installation.",
-            "Advertises RAG-backed knowledge search over ships, cabins and ports.",
+            "The hostname resolves and serves a Next.js marketing site.",
+        ],
+        corrections=[
+            "PROBED 2026-08-02 AND FAILED. The host sits behind a CLOUDFLARE "
+            "MANAGED CHALLENGE: responses carry Cf-Mitigated: challenge, "
+            "Server: cloudflare and a 'Just a moment... Enable JavaScript and "
+            "cookies to continue' interstitial, with the challenge scoped to "
+            "cZone 'mcp.siloah.travel'. Returned 403 on every path tried "
+            "(/, /mcp, /sse, /api/mcp, /mcp/sse, /v1/mcp, /message).",
+            "A JS-and-cookie challenge is categorically unpassable by an MCP "
+            "client, which is a plain HTTP client. A server advertised as "
+            "'no API key, just paste the URL' for AI agents is behind a gate "
+            "that blocks exactly those agents. There may be a working server at "
+            "the origin; it is unreachable by any legitimate client.",
+            "Separately, an MCP client that did reach the origin received the "
+            "marketing site's HTML 404 page, so no MCP endpoint was found at "
+            "the advertised root either.",
+            "Not worked around by design. Solving the challenge would mean "
+            "browser-emulation evasion, which this project does not do.",
+            "A registry listing proves someone published a description, not that "
+            "an endpoint answers. This entry is the cautionary case.",
         ],
         unverified_claims=[
             "70,000+ voyages / 678 ships / 62 cruise lines are vendor marketing "
-            "figures, not independently audited.",
-            "Exact tool names (searchVoyages, searchShips, searchBrands, "
-            "searchByContent) were not confirmed against a live tools/list.",
+            "figures, never observed.",
+            "Tool names searchVoyages, searchShips, searchBrands, searchByContent "
+            "were never returned by any tools/list.",
             "'26,000 active voyages with real-time pricing' is unconfirmed.",
         ],
         evidence=[
+            "Failed handshake + 403 path sweep from two independent clients, 2026-08-02",
             "https://glama.ai/mcp/servers/Siloah-Travel/siloah-travel-mcp",
-            "https://www.altexsoft.com/blog/mcp-servers-travel/",
         ],
     ),
     Source(

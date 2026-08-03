@@ -17,9 +17,10 @@ Three findings from validation shaped the code:
 - **Upstream tool names were never confirmed.** Nothing hard-codes
   `searchVoyages`. Providers call `tools/list` at request time and match tools by
   intent keywords, so a rename upstream does not break the server.
-- **Endpoints could not be probed from the authoring environment.** So
-  reachability is a runtime question, answered by `cruise_check_sources` rather
-  than asserted in a README.
+- **Reachability is a runtime question, not a documentation claim.** Answered
+  by `cruise_check_sources`. This was not academic: the flagship "free, no-auth"
+  source turned out to sit behind a Cloudflare challenge no MCP client can pass,
+  and is now disabled.
 - **Vendor inventory figures are unaudited.** They are returned as
   `unverified_claims`, never as facts.
 
@@ -49,9 +50,12 @@ Or in `mcpServers` config:
 }
 ```
 
-Optional: `APIFY_TOKEN` enables the CruiseMapper scraper provider. That actor
-bills **$1.50 per 1,000 results** and free accounts are capped at 5 results per
-run, so it is not a free source.
+`APIFY_TOKEN` is effectively **required** for voyage search. Apify is the only
+working voyage source: the free MCP alternative is unreachable (Cloudflare
+challenge) and the remaining MCP source returns booking links only. The actor
+bills **$1.50 per 1,000 results**, and free accounts are capped at 5 results per
+run — so voyage search is not free. Without the token, searches return an empty
+result set with an explicit error rather than failing silently.
 
 ## Tools
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from enum import Enum
 from typing import Any, Optional
 
@@ -35,6 +36,10 @@ mcp = FastMCP("cruise_search_mcp")
 
 PER_SOURCE_TIMEOUT_SECONDS = 45.0
 HEALTH_TIMEOUT_SECONDS = 20.0
+APIFY_TIMEOUT_SECONDS = 300.0
+
+#: Transport kinds this server has a provider implementation for.
+_PROVIDER_KINDS = (SourceKind.MCP, SourceKind.SCRAPER)
 
 
 class SortBy(str, Enum):
@@ -161,7 +166,7 @@ def _json(payload: Any) -> str:
 def _describe_error(source_id: str, exc: BaseException) -> dict[str, Any]:
     """Turn a provider failure into an actionable, non-fatal report entry."""
     if isinstance(exc, asyncio.TimeoutError):
-        message = f"Timed out after {PER_SOURCE_TIMEOUT_SECONDS:.0f}s"
+        message = "Timed out"
     elif isinstance(exc, ProviderError):
         message = str(exc)
     else:
@@ -179,15 +184,43 @@ def _resolve_targets(
     nothing useful.
     """
     if requested is None:
-        return usable_sources(SourceKind.MCP, provides)
+        return [s for s in usable_sources(None, provides) if s.kind in _PROVIDER_KINDS]
     resolved = [SOURCES_BY_ID[s] for s in requested]
     return [
         s
         for s in resolved
-        if s.kind is SourceKind.MCP
+        if s.kind in _PROVIDER_KINDS
         and s.endpoint
         and (provides is None or provides in s.provides)
     ]
+
+
+def _provider_for(source: Source, timeout: float):
+    """Build the provider that knows how to talk to ``source``."""
+    if source.kind is SourceKind.SCRAPER:
+        return ApifyProvider(source, timeout=max(timeout, 300.0))
+    return McpSourceProvider(source, timeout=timeout)
+
+
+def _apify_input(params: "SearchVoyagesInput") -> dict[str, Any]:
+    """Map our filters onto the CruiseMapper actor's input schema.
+
+    Field names follow the actor listing and are not contractually confirmed;
+    unknown keys are simply ignored by the actor, and a wrong name degrades to
+    a broader search rather than an error.
+    """
+    payload = {
+        "mode": "cruises",
+        "destination": params.destination,
+        "departurePort": params.departure_port,
+        "cruiseLine": params.cruise_line,
+        "shipName": params.ship,
+        "startDate": params.start_date,
+        "endDate": params.end_date,
+        "priceMax": params.max_price,
+        "maxItems": params.limit,
+    }
+    return {k: v for k, v in payload.items() if v is not None}
 
 
 @mcp.tool(
@@ -304,6 +337,19 @@ async def cruise_check_sources(params: CheckSourcesInput) -> str:
     targets = _resolve_targets(params.sources)
 
     async def probe(source: Source) -> dict[str, Any]:
+        if source.kind is SourceKind.SCRAPER:
+            # Running a paid actor just to check health would cost money.
+            has_token = bool(os.environ.get("APIFY_TOKEN"))
+            return {
+                "source": source.id,
+                "ok": has_token,
+                "endpoint": source.endpoint,
+                "tools": [],
+                "note": (
+                    "Paid scraper, not probed to avoid billing. APIFY_TOKEN is "
+                    + ("set." if has_token else "NOT set - source unusable.")
+                ),
+            }
         try:
             provider = McpSourceProvider(source, timeout=HEALTH_TIMEOUT_SECONDS)
             tools = await asyncio.wait_for(
@@ -430,10 +476,13 @@ async def cruise_search_voyages(params: SearchVoyagesInput) -> str:
     }
 
     async def query(source: Source) -> tuple[str, list[dict[str, Any]], dict[str, Any] | None]:
+        is_scraper = source.kind is SourceKind.SCRAPER
+        timeout = APIFY_TIMEOUT_SECONDS if is_scraper else PER_SOURCE_TIMEOUT_SECONDS
         try:
-            provider = McpSourceProvider(source, timeout=PER_SOURCE_TIMEOUT_SECONDS)
+            provider = _provider_for(source, timeout)
+            arguments = _apify_input(params) if is_scraper else upstream_args
             voyages = await asyncio.wait_for(
-                provider.search_voyages(upstream_args), timeout=PER_SOURCE_TIMEOUT_SECONDS
+                provider.search_voyages(arguments), timeout=timeout
             )
             return source.id, voyages, None
         except Exception as exc:  # noqa: BLE001 - degrade, do not abort

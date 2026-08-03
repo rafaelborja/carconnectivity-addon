@@ -20,9 +20,9 @@ figures are labelled as such rather than promoted to fact.
 
 | # | Claim | Verdict |
 |---|---|---|
-| 1 | Siloah Travel MCP exists, public, no auth | **Corroborated** |
-| 2 | Siloah: 70k voyages / 678 ships / 62 lines | **Vendor claim** — unaudited |
-| 3 | Siloah tool names (`searchVoyages` etc.) | **Unverified** |
+| 1 | Siloah Travel MCP exists, public, no auth | **Refuted** — unreachable |
+| 2 | Siloah: 70k voyages / 678 ships / 62 lines | **Never observed** |
+| 3 | Siloah tool names (`searchVoyages` etc.) | **Never observed** |
 | 4 | Pixie Vacations MCP exists, 13 cruise lines | **Confirmed live** |
 | 4b | Pixie tool named `get_cruise_booking_info` | **Confirmed live** |
 | 5 | Pixie `?referral=135752` on cruise links | **Wrong** — resort-only |
@@ -42,6 +42,44 @@ figures are labelled as such rather than promoted to fact.
 | 18 | FastMCP `to_json()` hashed tool routing | **Conflated** — not FastMCP |
 | 19 | *hiQ v. LinkedIn*: public scraping ≠ CFAA breach | **Corroborated**, incomplete |
 | 20 | MCP introduced late 2024 | **Correct** |
+
+---
+
+## Addendum: Siloah Travel is unreachable (2026-08-02)
+
+Probed from an unrestricted network. It fails, and the reason is specific.
+
+`mcp.siloah.travel` sits behind a **Cloudflare managed challenge**. Responses
+carry `Cf-Mitigated: challenge`, `Server: cloudflare`, and the "Just a moment…
+Enable JavaScript and cookies to continue" interstitial, with `cType: 'managed'`
+and the challenge scoped to `cZone: 'mcp.siloah.travel'`. Every path tried
+returned 403: `/`, `/mcp`, `/sse`, `/api/mcp`, `/mcp/sse`, `/v1/mcp`, `/message`
+— including paths that cannot exist, confirming the edge rejects before routing.
+
+A JS-and-cookie challenge is **categorically unpassable by an MCP client**,
+which is a plain HTTP client with no JavaScript engine. Separately, an MCP
+client that did reach the origin received the marketing site's Next.js HTML 404
+page, then failed OAuth discovery against that same HTML — so no MCP endpoint
+was found at the advertised root either.
+
+There may be a working server behind the challenge. It does not matter: it is
+unreachable by any legitimate client, which makes the advertised "no API key,
+no installation, just paste the URL" false in practice. The obvious workaround —
+browser emulation to solve the challenge — is exactly the evasion this project
+declines to do, and it would be absurd to deploy against a server that invites
+agent traffic.
+
+**This is the most important finding in the whole exercise.** Siloah was the
+report's flagship free source and the one I rated `corroborated` on the strength
+of a Glama registry listing and vendor copy. A registry listing proves someone
+published a description. It does not prove an endpoint answers. Every claimed
+figure — 70,000 voyages, 678 ships, 62 lines, the four tool names — was never
+observed by anyone in this exercise.
+
+Consequences: Siloah is `unverified` with no endpoint, and **no free voyage
+search source remains**. Apify (~$1.50/1k results, token required) is the only
+path to actual sailings, so it is now wired into `cruise_search_voyages`
+directly. Pixie works but returns booking links only.
 
 ---
 
@@ -94,11 +132,8 @@ recorded as data, not obeyed as a directive.
 
 ## Where the report is solid
 
-**Siloah Travel MCP** is real and listed in the Glama registry under author
-`Siloah-Travel`, advertised as needing no API key and no install, with
-RAG-backed knowledge search. The endpoint `https://mcp.siloah.travel` matches.
-The inventory figures (70,000+ voyages, 678 ships, 62 lines) come from the
-vendor's own listing copy — plausible, but no third party audits them.
+~~**Siloah Travel MCP**~~ — *superseded: this held up on paper and then failed
+every live probe. See the Siloah addendum above.*
 
 **Pixie Vacations MCP** is real, published on `mcp.so` as `pixie-vacations-mcp`,
 covering 13 cruise lines routed through the agency's booking engine — all
